@@ -26,6 +26,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "next/image";
 import { cn } from "@/utils/ui";
+import { PresencePill } from "@/collab/presence-pill";
 
 export function EditorHeader() {
 	return (
@@ -34,7 +35,8 @@ export function EditorHeader() {
 				<ProjectDropdown />
 				<EditableProjectName />
 			</div>
-			<nav className="flex items-center gap-2">
+			<nav className="flex items-center gap-3">
+				<PresencePill />
 				<FeedbackPopover />
 				<ExportButton />
 				<ThemeToggle />
@@ -56,14 +58,17 @@ function ProjectDropdown() {
 		if (isExiting) return;
 		setIsExiting(true);
 
+		router.push("/projects");
+
 		try {
 			await editor.project.prepareExit();
-			editor.project.closeProject();
 		} catch (error) {
 			console.error("Failed to prepare project exit:", error);
-		} finally {
+		}
+		try {
 			editor.project.closeProject();
-			router.push("/projects");
+		} catch (error) {
+			console.error("Failed to close project:", error);
 		}
 	};
 

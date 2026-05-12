@@ -9,6 +9,8 @@ import { useKeybindingsListener } from "@/actions/use-keybindings";
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
+import { CollabProvider } from "@/collab/collab-context";
+import { useCollabToken, userColor } from "@/collab/use-collab-token";
 import { loadFontAtlas } from "@/fonts/google-fonts";
 import {
 	initializeGpuRenderer,
@@ -56,10 +58,19 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 				if (isNotFound) {
 					try {
-						const newProjectId = await editor.project.createNewProject({
+						// Honour the URL's id so collab peers end up in the same
+						// Hocuspocus room (project:<id>). When this client is the
+						// first writer, the placeholder is what gets uploaded; when
+						// it joins a room that already has a snapshot, the
+						// CollaborationManager observer overwrites the placeholder
+						// from the Y.Doc as soon as the WebSocket syncs.
+						await editor.project.createNewProject({
 							name: "Untitled Project",
+							id: projectId,
 						});
-						router.replace(`/editor/${newProjectId}`);
+						if (cancelled) return;
+						setIsLoading(false);
+						loadFontAtlas();
 					} catch (_createErr) {
 						setError("Failed to create project");
 						setIsLoading(false);
@@ -109,21 +120,71 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	}
 
 	if (!activeProject) {
-		return (
-			<div className="bg-background flex h-screen w-screen items-center justify-center">
-				<div className="flex flex-col items-center gap-4">
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<p className="text-muted-foreground text-sm">Exiting project...</p>
-				</div>
-			</div>
-		);
+		return <ExitingProjectScreen />;
 	}
 
 	return (
 		<>
 			<EditorRuntimeBindings />
-			{children}
+			<CollabSessionGate projectId={projectId}>{children}</CollabSessionGate>
 		</>
+	);
+}
+
+function ExitingProjectScreen() {
+	const router = useRouter();
+	const [stuck, setStuck] = useState(false);
+
+	useEffect(() => {
+		const forceNav = setTimeout(() => {
+			router.replace("/projects");
+		}, 3000);
+		const showRecovery = setTimeout(() => setStuck(true), 6000);
+		return () => {
+			clearTimeout(forceNav);
+			clearTimeout(showRecovery);
+		};
+	}, [router]);
+
+	return (
+		<div className="bg-background flex h-screen w-screen items-center justify-center">
+			<div className="flex flex-col items-center gap-4">
+				<Loader2 className="text-muted-foreground size-8 animate-spin" />
+				<p className="text-muted-foreground text-sm">Exiting project...</p>
+				{stuck && (
+					<button
+						type="button"
+						onClick={() => window.location.assign("/projects")}
+						className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+					>
+						Taking too long? Click to reload
+					</button>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function CollabSessionGate({
+	projectId,
+	children,
+}: {
+	projectId: string;
+	children: React.ReactNode;
+}) {
+	const token = useCollabToken(projectId);
+	const user = token
+		? { id: token.user.id, name: token.user.name, color: userColor(token.user.id) }
+		: { id: "anon-local", name: "Local user", color: "#888" };
+
+	return (
+		<CollabProvider
+			user={user}
+			wsUrl={token?.wsUrl || undefined}
+			token={token?.token || undefined}
+		>
+			{children}
+		</CollabProvider>
 	);
 }
 
