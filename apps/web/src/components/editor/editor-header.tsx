@@ -21,7 +21,7 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Logout05Icon } from "@hugeicons/core-free-icons";
+import { CommandIcon, Logout05Icon, Link01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "next/image";
@@ -37,6 +37,7 @@ export function EditorHeader() {
 			</div>
 			<nav className="flex items-center gap-3">
 				<PresencePill />
+				<ShareLinkButton />
 				<FeedbackPopover />
 				<ExportButton />
 				<ThemeToggle />
@@ -174,6 +175,37 @@ function ProjectDropdown() {
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "shortcuts" : null)}
 			/>
 		</>
+	);
+}
+
+function ShareLinkButton() {
+	const activeProject = useEditor((e) => e.project.getActiveOrNull());
+
+	const handleCopy = async () => {
+		if (!activeProject) return;
+		const url = `${window.location.origin}/editor/${activeProject.metadata.id}`;
+		try {
+			await navigator.clipboard.writeText(url);
+			toast.success("Share link copied", {
+				description: "Send it to a collaborator to invite them.",
+			});
+		} catch {
+			toast.error("Couldn't copy link", { description: url });
+		}
+	};
+
+	if (!activeProject) return null;
+
+	return (
+		<Button
+			variant="text"
+			size="icon"
+			onClick={handleCopy}
+			aria-label="Copy share link"
+			title="Copy share link"
+		>
+			<HugeiconsIcon icon={Link01Icon} />
+		</Button>
 	);
 }
 
