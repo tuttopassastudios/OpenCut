@@ -136,12 +136,16 @@ function ExitingProjectScreen() {
 	const [stuck, setStuck] = useState(false);
 
 	useEffect(() => {
-		const forceNav = setTimeout(() => {
+		const softNav = setTimeout(() => {
 			router.replace("/projects");
-		}, 3000);
-		const showRecovery = setTimeout(() => setStuck(true), 6000);
+		}, 1000);
+		const hardNav = setTimeout(() => {
+			window.location.assign("/projects");
+		}, 2500);
+		const showRecovery = setTimeout(() => setStuck(true), 4000);
 		return () => {
-			clearTimeout(forceNav);
+			clearTimeout(softNav);
+			clearTimeout(hardNav);
 			clearTimeout(showRecovery);
 		};
 	}, [router]);

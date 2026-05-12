@@ -54,22 +54,24 @@ function ProjectDropdown() {
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 
-	const handleExit = async () => {
+	const handleExit = () => {
 		if (isExiting) return;
 		setIsExiting(true);
 
-		router.push("/projects");
+		void (async () => {
+			try {
+				await editor.project.prepareExit();
+			} catch (error) {
+				console.error("Failed to prepare project exit:", error);
+			}
+			try {
+				editor.project.closeProject();
+			} catch (error) {
+				console.error("Failed to close project:", error);
+			}
+		})();
 
-		try {
-			await editor.project.prepareExit();
-		} catch (error) {
-			console.error("Failed to prepare project exit:", error);
-		}
-		try {
-			editor.project.closeProject();
-		} catch (error) {
-			console.error("Failed to close project:", error);
-		}
+		router.push("/projects");
 	};
 
 	const handleSaveProjectName = async (newName: string) => {
